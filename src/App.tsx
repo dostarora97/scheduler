@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { CopyIcon, CheckIcon, XIcon } from 'lucide-react'
+import { CopyIcon, CheckIcon, XIcon, RotateCcwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Controls } from '@/components/Controls'
@@ -7,15 +7,11 @@ import { Timeline } from '@/components/Timeline'
 import { useOverlapParams } from '@/lib/params'
 import {
   computeOffsets,
-  findBestSlot,
   fmtUTC,
   fmtAnchorDate,
   fmtLocal,
   wrapMin,
   dayOffsetOf,
-  timeStrToMin,
-  computeStatus,
-  statusText,
   snapToGrid,
   type Region,
 } from '@/lib/tz'
@@ -31,16 +27,11 @@ function App() {
   const workEnd = params.we
   const dur = params.dur
 
-  const workStartMin = timeStrToMin(workStart)
-  const workEndMin = timeStrToMin(workEnd)
-
-  // If slot is -1 (initial / auto), find best
-  const slot = useMemo(() => {
-    if (params.slot === -1) {
-      return findBestSlot(regions, dur, workStartMin, workEndMin, dateBasis)
-    }
-    return snapToGrid(params.slot, dur)
-  }, [params.slot, regions, dur, workStartMin, workEndMin, dateBasis])
+  // Snap slot to 30-min grid
+  const slot = useMemo(
+    () => snapToGrid(params.slot, dur),
+    [params.slot, dur],
+  )
 
   const withOffsets = useMemo(
     () => computeOffsets(regions, dateBasis),
@@ -58,11 +49,10 @@ function App() {
       const rawEnd = rawStart + dur
       const localStart = wrapMin(rawStart)
       const localEnd = wrapMin(rawEnd)
-      const status = computeStatus(localStart, dur, workStartMin, workEndMin)
       const startDate = fmtAnchorDate(dayOffsetOf(rawStart), dateBasis)
       const endDate = fmtAnchorDate(dayOffsetOf(rawEnd), dateBasis)
       const dateNote = startDate === endDate ? ` (${startDate})` : ` (${startDate} – ${endDate})`
-      text += `- ${r.name}: ${fmtLocal(localStart)} – ${fmtLocal(localEnd)}${dateNote}${status.pain > 0 ? ` (${statusText(status)})` : ''}\n`
+      text += `- ${r.name}: ${fmtLocal(localStart)} – ${fmtLocal(localEnd)}${dateNote}\n`
     })
 
     const doFallback = () => {
@@ -87,15 +77,24 @@ function App() {
     }
 
     setTimeout(() => setCopyState('idle'), copyState === 'fail' ? 3000 : 1500)
-  }, [startT, endT, dur, dateBasis, withOffsets, workStartMin, workEndMin, copyState])
+  }, [startT, endT, dur, dateBasis, withOffsets, copyState])
 
   return (
     <TooltipProvider delay={200}>
-      <div className="dark min-h-screen bg-[#14171c] text-[#e8e6e1] font-mono">
-        <div className="mx-auto w-[90%] max-w-[93.75rem] px-0 py-8 pb-20">
-          <header className="mb-7 flex items-center gap-2">
+      {/* Portrait mobile gate — shown only in portrait on small screens */}
+      <div className="mobile-pt:flex hidden fixed inset-0 z-50 flex-col items-center justify-center gap-4 bg-[#14171c] px-8 text-center">
+        <RotateCcwIcon className="size-10 text-[#8b92a0]" strokeWidth={1.5} />
+        <div>
+          <p className="text-[1rem] font-semibold tracking-tight text-[#e8e6e1]">Rotate to landscape</p>
+          <p className="mt-1 text-[0.8125rem] text-[#8b92a0]">This timeline needs the full width to work.</p>
+        </div>
+      </div>
+
+      <div className="dark min-h-screen bg-[#14171c] text-[#e8e6e1] font-mono mobile-ls:overflow-x-auto">
+        <div className="mx-auto w-[90%] max-w-[93.75rem] mobile-ls:w-[96%] mobile-ls:min-w-[540px] px-0 py-8 pb-20 mobile-ls:py-3 mobile-ls:pb-4">
+          <header className="mb-7 mobile-ls:mb-2 flex items-center gap-2">
             <span className="text-xl">⏰</span>
-            <h1 className="text-[1.375rem] font-semibold tracking-tight">Overlap Finder</h1>
+            <h1 className="text-[1.375rem] mobile-ls:text-[1.1rem] font-semibold tracking-tight">Overlap Finder</h1>
           </header>
 
           <Controls
@@ -107,7 +106,7 @@ function App() {
             onDateChange={v => setParams({ date: v, slot: -1 })}
           />
 
-          <div className="mt-6 flex items-center justify-between gap-2">
+          <div className="mt-6 mobile-ls:mt-2 flex items-center justify-between gap-2">
             <h2 className="text-[0.8125rem] font-semibold text-[#8b92a0]">{headerLabel}</h2>
             <Button
               variant="ghost"
@@ -126,7 +125,7 @@ function App() {
             </Button>
           </div>
 
-          <div className="relative mt-2.5 rounded-[0.625rem] border border-[#2a2f3a] bg-[#1b1f27] p-4">
+          <div className="relative mt-2.5 rounded-[0.625rem] border border-[#2a2f3a] bg-[#1b1f27] p-4 mobile-ls:p-2">
             <Timeline
               regions={regions}
               slotUTC={slot}

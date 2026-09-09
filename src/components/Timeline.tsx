@@ -4,6 +4,7 @@ import {
   DndContext,
   closestCenter,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -12,16 +13,17 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   arrayMove,
+  sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { PlusIcon } from 'lucide-react'
 import { RegionRow } from './RegionRow'
-import { computeOffsets, timeStrToMin, snapToGrid, TZ_OPTIONS, type Region } from '@/lib/tz'
+import { computeOffsets, timeStrToMin, snapToGrid, fmtUTC, wrapMin, TZ_OPTIONS, type Region } from '@/lib/tz'
 
 const MIN_DUR = 30
 
-// Must match RegionRow label layout: grip(w-4=1rem) + label(w-[19rem]) = 20rem
-const LABEL_W = '20rem'
+// Fallback label width; the live value comes from the --label-w CSS variable
+const LABEL_W_FALLBACK = '20rem'
 // Must match RegionRow remove button: ml-1 + size-5 ≈ 1.75rem
 const REMOVE_W = '1.75rem'
 
@@ -51,6 +53,22 @@ export function Timeline({
   const overlayRef = useRef<HTMLDivElement>(null)
   const [trackWidth, setTrackWidth] = useState(0)
   const [trackHeight, setTrackHeight] = useState(0)
+  const [labelW, setLabelW] = useState(LABEL_W_FALLBACK)
+
+  // Read --label-w CSS variable so the overlay tracks the responsive label column width
+  useEffect(() => {
+    const updateLabelW = () => {
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--label-w').trim()
+      setLabelW(v || LABEL_W_FALLBACK)
+    }
+    updateLabelW()
+    window.addEventListener('resize', updateLabelW)
+    window.addEventListener('orientationchange', updateLabelW)
+    return () => {
+      window.removeEventListener('resize', updateLabelW)
+      window.removeEventListener('orientationchange', updateLabelW)
+    }
+  }, [])
 
   // Always-mounted ResizeObserver so dimensions are ready immediately
   useEffect(() => {
@@ -76,7 +94,10 @@ export function Timeline({
   const workStartMin = timeStrToMin(workStart)
   const workEndMin = timeStrToMin(workEnd)
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
@@ -91,6 +112,19 @@ export function Timeline({
       onSlotChange(snapToGrid(col * 30, dur))
     },
     [dur, onSlotChange],
+  )
+
+  const handleSlotKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        onSlotChange(snapToGrid(Math.max(0, slotUTC - 30), dur))
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        onSlotChange(snapToGrid(Math.min(1440 - dur, slotUTC + 30), dur))
+      }
+    },
+    [slotUTC, dur, onSlotChange],
   )
 
   const usedTz = new Set(regions.map(r => r.tz))
@@ -134,7 +168,7 @@ export function Timeline({
           <div
             ref={overlayRef}
             className="pointer-events-none absolute inset-y-0"
-            style={{ left: LABEL_W, right: REMOVE_W, zIndex: 10 }}
+            style={{ left: labelW, right: REMOVE_W, zIndex: 10 }}
           >
             {trackWidth > 0 && (
               <Rnd
@@ -174,7 +208,18 @@ export function Timeline({
                   onSlotChange(newSlot)
                   onDurChange(newDur)
                 }}
-              />
+              >
+                <div
+                  tabIndex={0}
+                  role="slider"
+                  aria-label={`Meeting slot: ${fmtUTC(slotUTC)} – ${fmtUTC(wrapMin(slotUTC + dur))} UTC. Left/Right arrows to move by 30 minutes.`}
+                  aria-valuemin={0}
+                  aria-valuemax={1410}
+                  aria-valuenow={slotUTC}
+                  onKeyDown={handleSlotKeyDown}
+                  className="absolute inset-0 rounded-[3px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                />
+              </Rnd>
             )}
           </div>
         </div>
@@ -188,6 +233,7 @@ export function Timeline({
             </div>
             <select
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              aria-label="Add region"
               value=""
               onChange={e => {
                 const found = TZ_OPTIONS.find(([v]) => v === e.target.value)

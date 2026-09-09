@@ -7,7 +7,6 @@ import {
   fmtLocal,
   fmtAnchorDate,
   computeStatus,
-  statusText,
   wrapMin,
   dayOffsetOf,
   tzAbbrev,
@@ -86,14 +85,13 @@ export function RegionRow({
       <button
         {...attributes}
         {...listeners}
-        className="flex w-4 shrink-0 cursor-grab items-center justify-center text-[#8b92a0] opacity-0 transition-opacity group-hover:opacity-60 active:cursor-grabbing"
-        tabIndex={-1}
+        className="flex w-4 shrink-0 cursor-grab items-center justify-center text-[#8b92a0] opacity-0 transition-opacity group-hover:opacity-60 focus-visible:opacity-60 active:cursor-grabbing"
       >
         <GripVerticalIcon className="size-3" />
       </button>
 
-      {/* Label column — w-[19rem] = 304px */}
-      <div className="flex w-[19rem] shrink-0 items-stretch gap-1.5 pr-2">
+      {/* Label column — w-[19rem] desktop, w-[13rem] mobile landscape */}
+      <div className="flex w-[19rem] mobile-ls:w-[13rem] shrink-0 items-stretch gap-1.5 pr-2">
         {/* Name + tz abbrev */}
         <div className="flex min-w-[5rem] flex-1 flex-col justify-center gap-0.5 overflow-hidden">
           <input
@@ -101,7 +99,8 @@ export function RegionRow({
             value={region.name}
             onChange={e => onNameChange(e.target.value)}
             size={Math.max(4, region.name.length)}
-            title={statusText(status)}
+            maxLength={40}
+            aria-label="Region name"
           />
           <span className="text-[10px] text-[#8b92a0]">{tzAbbrev(region.tz)}</span>
         </div>
@@ -119,8 +118,8 @@ export function RegionRow({
           )}
         </div>
 
-        {/* End time */}
-        <div className="flex w-[5.75rem] shrink-0 flex-col justify-center items-start font-mono text-[0.8125rem] font-medium">
+        {/* End time — hidden on mobile landscape to save label width */}
+        <div className="flex w-[5.75rem] mobile-ls:hidden shrink-0 flex-col justify-center items-start font-mono text-[0.8125rem] font-medium">
           <span className={endColor}>{fmtLocal(localEnd)}</span>
           {endDayOff !== 0 && (
             <span
@@ -148,10 +147,10 @@ export function RegionRow({
       <Button
         variant="ghost"
         size="icon"
-        className="ml-1 size-5 shrink-0 self-center opacity-0 transition-opacity group-hover:opacity-100"
+        className="ml-1 size-5 shrink-0 self-center opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
         style={{ visibility: canRemove ? 'visible' : 'hidden' }}
         onClick={onRemove}
-        tabIndex={-1}
+        aria-label={`Remove ${region.name}`}
       >
         <XIcon className="size-3" />
       </Button>

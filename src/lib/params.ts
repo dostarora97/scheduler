@@ -45,7 +45,7 @@ const parseAsRegions = createParser<RegionParam[]>({
 
 export const searchParams = {
   regions: parseAsRegions.withDefault(DEFAULT_REGIONS),
-  slot: parseAsInteger.withDefault(-1), // -1 = auto-find best
+  slot: parseAsInteger.withDefault(540), // 09:00 UTC
   dur: parseAsInteger.withDefault(60),
   date: parseAsString.withDefault(todayISO()),
   ws: parseAsString.withDefault('09:00'),

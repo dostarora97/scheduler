@@ -49,6 +49,7 @@ export function Controls({
           value={workStart}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onWorkStartChange(e.target.value)}
           className="h-7 w-28 font-mono text-xs"
+          aria-label="Work start time"
         />
         <span>–</span>
         <Input
@@ -56,6 +57,7 @@ export function Controls({
           value={workEnd}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onWorkEndChange(e.target.value)}
           className="h-7 w-28 font-mono text-xs"
+          aria-label="Work end time"
         />
       </div>
 

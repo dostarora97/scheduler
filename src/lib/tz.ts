@@ -139,12 +139,6 @@ export function computeStatus(
   return { pain, direction }
 }
 
-export function statusText(s: SlotStatus): string {
-  if (s.pain === 0) return 'in hours'
-  const hrs = Math.round((s.pain / 60) * 10) / 10
-  return s.direction === 'before' ? `starts ${hrs}h early` : `runs ${hrs}h late`
-}
-
 export function computeOffsets(
   regions: Region[],
   baseDateISO: string,
@@ -152,37 +146,6 @@ export function computeOffsets(
   const [y, mo, d] = baseDateISO.split('-').map(Number)
   const base = new Date(Date.UTC(y, mo - 1, d, 12, 0, 0))
   return regions.map(r => ({ ...r, offset: getOffsetMinutes(base, r.tz) }))
-}
-
-/** Find best UTC start time (in minutes) minimising maxPain then totalPain. */
-export function findBestSlot(
-  regions: Region[],
-  dur: number,
-  workStart: number,
-  workEnd: number,
-  baseDateISO: string,
-): number {
-  const withOffsets = computeOffsets(regions, baseDateISO)
-  let bestT = 0
-  let bestMax = Infinity
-  let bestTotal = Infinity
-
-  for (let t = 0; t <= 1440 - dur; t += 15) {
-    let maxPain = 0
-    let totalPain = 0
-    for (const r of withOffsets) {
-      const localStart = wrapMin(t + r.offset)
-      const s = computeStatus(localStart, dur, workStart, workEnd)
-      if (s.pain > maxPain) maxPain = s.pain
-      totalPain += s.pain
-    }
-    if (maxPain < bestMax || (maxPain === bestMax && totalPain < bestTotal)) {
-      bestMax = maxPain
-      bestTotal = totalPain
-      bestT = t
-    }
-  }
-  return bestT
 }
 
 /** Round UTC minutes to nearest 30-min boundary, clamped to valid range. */

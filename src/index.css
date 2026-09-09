@@ -4,6 +4,8 @@
 @import "@fontsource-variable/geist";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant mobile-ls (@media (max-height: 500px) and (orientation: landscape));
+@custom-variant mobile-pt (@media (max-width: 500px) and (orientation: portrait));
 
 /* Overlap-finder palette */
 :root {
@@ -13,6 +15,15 @@
   --color-amber-pastel: color-mix(in srgb, #d9a052, white 30%);
   --color-red: #c4573f;
   --color-red-pastel: color-mix(in srgb, #c4573f, white 30%);
+  /* overlay left offset = grip (1rem) + label column (19rem) */
+  --label-w: 20rem;
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  :root {
+    /* compact: grip (1rem) + label column (13rem) */
+    --label-w: 14rem;
+  }
 }
 
 @theme inline {
@@ -137,4 +148,12 @@
   html {
     @apply font-sans;
     }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

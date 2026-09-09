@@ -35,7 +35,7 @@ export function TrackCells({
 }: TrackCellsProps) {
   return (
     <div
-      className="flex h-12 flex-1 cursor-pointer overflow-hidden rounded-sm"
+      className="flex h-12 mobile-ls:h-9 flex-1 cursor-pointer overflow-hidden rounded-sm"
       aria-label={`${regionName} timeline`}
     >
       {Array.from({ length: CELLS }, (_, i) => {
@@ -48,8 +48,11 @@ export function TrackCells({
           <Tooltip key={i}>
             <TooltipTrigger
               render={
-                <div
-                  className="h-full flex-1 transition-colors duration-100"
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  aria-label={`${regionName}: ${fmtLocal(localMin)}, move meeting to this time`}
+                  className="h-full flex-1 cursor-pointer border-0 p-0 transition-colors duration-100"
                   style={{
                     background: bg,
                     borderLeft: i === 0 ? 'none' : i % 2 === 0 ? '1px solid rgba(0,0,0,0.35)' : '1px solid rgba(0,0,0,0.12)',
