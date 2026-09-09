@@ -37,6 +37,7 @@ interface TimelineProps {
   onRegionsChange: (regions: Region[]) => void
   onSlotChange: (slot: number) => void
   onDurChange: (dur: number) => void
+  onLiveChange?: (slot: number, dur: number) => void
 }
 
 export function Timeline({
@@ -49,11 +50,20 @@ export function Timeline({
   onRegionsChange,
   onSlotChange,
   onDurChange,
+  onLiveChange,
 }: TimelineProps) {
   const overlayRef = useRef<HTMLDivElement>(null)
   const [trackWidth, setTrackWidth] = useState(0)
   const [trackHeight, setTrackHeight] = useState(0)
   const [labelW, setLabelW] = useState(LABEL_W_FALLBACK)
+
+  // Live values: update every drag/resize frame so rows and cells respond instantly
+  const [liveSlot, setLiveSlot] = useState(slotUTC)
+  const [liveDur, setLiveDur] = useState(dur)
+
+  // Sync when slot/dur change from outside (cell click, URL paste, keyboard)
+  useEffect(() => setLiveSlot(slotUTC), [slotUTC])
+  useEffect(() => setLiveDur(dur), [dur])
 
   // Read --label-w CSS variable so the overlay tracks the responsive label column width
   useEffect(() => {
@@ -87,8 +97,9 @@ export function Timeline({
   const winX = slotUTC * pxPerMin
   const winW = Math.max(cellPx, dur * pxPerMin)
 
-  const selectedStartCol = Math.floor(slotUTC / 30)
-  const selectedEndCol = Math.ceil((slotUTC + dur) / 30)
+  // Use live values for cell highlighting and time labels
+  const selectedStartCol = Math.floor(liveSlot / 30)
+  const selectedEndCol = Math.ceil((liveSlot + liveDur) / 30)
 
   const withOffsets = computeOffsets(regions, dateBasis)
   const workStartMin = timeStrToMin(workStart)
@@ -148,8 +159,8 @@ export function Timeline({
                 offset={r.offset}
                 workStart={workStartMin}
                 workEnd={workEndMin}
-                slotUTC={slotUTC}
-                dur={dur}
+                slotUTC={liveSlot}
+                dur={liveDur}
                 dateBasis={dateBasis}
                 selectedStartCol={selectedStartCol}
                 selectedEndCol={selectedEndCol}
@@ -199,8 +210,22 @@ export function Timeline({
                   left: { width: '14px', left: '-7px', cursor: 'ew-resize' },
                   right: { width: '14px', right: '-7px', cursor: 'ew-resize' },
                 }}
+                onDrag={(_e, d) => {
+                  if (pxPerMin <= 0) return
+                  const s = snapToGrid(d.x / pxPerMin, liveDur)
+                  setLiveSlot(s)
+                  onLiveChange?.(s, liveDur)
+                }}
                 onDragStop={(_e, d) => {
                   onSlotChange(snapToGrid(d.x / pxPerMin, dur))
+                }}
+                onResize={(_e, _dir, ref, _delta, pos) => {
+                  if (pxPerMin <= 0) return
+                  const s = snapToGrid(pos.x / pxPerMin, MIN_DUR)
+                  const d = Math.max(MIN_DUR, Math.round(ref.offsetWidth / pxPerMin / 30) * 30)
+                  setLiveSlot(s)
+                  setLiveDur(d)
+                  onLiveChange?.(s, d)
                 }}
                 onResizeStop={(_e, _dir, ref, _delta, pos) => {
                   const newSlot = snapToGrid(pos.x / pxPerMin, MIN_DUR)

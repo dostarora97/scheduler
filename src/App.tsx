@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useRef } from 'react'
 import { CopyIcon, CheckIcon, XIcon, RotateCcwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -20,6 +20,7 @@ import { useState } from 'react'
 function App() {
   const [params, setParams] = useOverlapParams()
   const [copyState, setCopyState] = useState<'idle' | 'ok' | 'fail'>('idle')
+  const headerRef = useRef<HTMLHeadingElement>(null)
 
   const regions = params.regions as Region[]
   const dateBasis = params.date
@@ -41,6 +42,12 @@ function App() {
   const startT = slot
   const endT = (startT + dur) % 1440
   const headerLabel = `${fmtAnchorDate(0, dateBasis)} · ${fmtUTC(startT)} – ${fmtUTC(endT)} UTC · ${dur} min`
+
+  // Update header text directly during drag — no React re-render needed per frame
+  const handleLiveChange = useCallback((s: number, d: number) => {
+    if (!headerRef.current) return
+    headerRef.current.textContent = `${fmtAnchorDate(0, dateBasis)} · ${fmtUTC(s)} – ${fmtUTC(wrapMin(s + d))} UTC · ${d} min`
+  }, [dateBasis])
 
   const handleCopy = useCallback(() => {
     let text = `Proposed meeting time (${fmtAnchorDate(0, dateBasis)}, ${fmtUTC(startT)} – ${fmtUTC(endT)} UTC):\n`
@@ -107,7 +114,7 @@ function App() {
           />
 
           <div className="mt-6 mobile-ls:mt-2 flex items-center justify-between gap-2">
-            <h2 className="text-[0.8125rem] font-semibold text-[#8b92a0]">{headerLabel}</h2>
+            <h2 ref={headerRef} className="text-[0.8125rem] font-semibold text-[#8b92a0]">{headerLabel}</h2>
             <Button
               variant="ghost"
               size="icon"
@@ -136,6 +143,7 @@ function App() {
               onRegionsChange={r => setParams({ regions: r, slot })}
               onSlotChange={s => setParams({ slot: s })}
               onDurChange={d => setParams({ dur: d })}
+              onLiveChange={handleLiveChange}
             />
           </div>
         </div>
