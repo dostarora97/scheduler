@@ -130,13 +130,13 @@ export function RegionRow({
       </button>
 
       {/* Label column — w-[20.5rem] desktop, w-[13.5rem] mobile landscape; ml-2 gap after grip */}
-      <div className="flex w-82 shrink-0 items-stretch gap-1.5 pr-2 ml-2 mobile-ls:w-54">
+      <div className="ml-2 flex w-82 shrink-0 items-stretch gap-1.5 pr-2 mobile-ls:w-54">
         {/* Name + tz abbrev */}
         <div className="flex min-w-20 flex-1 flex-col justify-center gap-0.5 overflow-hidden">
           <input
             id={`region-name-${region.id}`}
             name={`region-name-${region.id}`}
-            className="truncate bg-transparent text-[0.8125rem] font-semibold text-app-fg outline-none focus-visible:rounded-sm focus-visible:ring-1 focus-visible:ring-[#8b92a0]/50"
+            className="truncate bg-transparent text-[0.8125rem] font-semibold text-app-fg outline-none"
             value={draftName}
             onChange={(e) => setDraftName(e.target.value)}
             onBlur={commitName}

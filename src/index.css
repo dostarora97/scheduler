@@ -9,15 +9,12 @@
 
 /* Overlap-finder palette */
 :root {
-  --color-green: #4fa98c;
-  /* pastel: alpha-based so it glows on dark, not milky — revert: color-mix(in srgb, #4fa98c, white 30%) */
-  --color-green-pastel: rgba(79, 169, 140, 0.22);
-  --color-amber: #d9a052;
-  /* pastel: alpha-based — revert: color-mix(in srgb, #d9a052, white 30%) */
-  --color-amber-pastel: rgba(217, 160, 82, 0.22);
-  --color-red: #c4573f;
-  /* pastel: alpha-based — revert: color-mix(in srgb, #c4573f, white 30%) */
-  --color-red-pastel: rgba(196, 87, 63, 0.22);
+  --color-green: #1dcfa0;
+  --color-green-pastel: color-mix(in srgb, #1dcfa0, white 62%);
+  --color-amber: #f5a82a;
+  --color-amber-pastel: color-mix(in srgb, #f5a82a, white 62%);
+  --color-red: #f05038;
+  --color-red-pastel: color-mix(in srgb, #f05038, white 62%);
   /* overlay left offset = grip (w-5=1.25rem) + ml-2 gap (0.5rem) + label column (w-82=20.5rem) */
   --label-w: 22.25rem;
 }

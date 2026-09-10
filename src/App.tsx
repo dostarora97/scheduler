@@ -1,4 +1,10 @@
-import { CheckIcon, CopyIcon, Link2Icon, RotateCcwIcon, XIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  Link2Icon,
+  RotateCcwIcon,
+  XIcon,
+} from "lucide-react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Controls } from "@/components/Controls";
 import { Timeline } from "@/components/Timeline";
@@ -49,14 +55,11 @@ function App() {
   const endT = (startT + dur) % 1440;
 
   // Update only the time-range and duration spans during drag — no re-render needed
-  const handleLiveChange = useCallback(
-    (s: number, d: number) => {
-      if (timeRangeRef.current)
-        timeRangeRef.current.textContent = `${fmtUTC(s)} – ${fmtUTC(wrapMin(s + d))} UTC`;
-      if (durRef.current) durRef.current.textContent = `${d} min`;
-    },
-    [],
-  );
+  const handleLiveChange = useCallback((s: number, d: number) => {
+    if (timeRangeRef.current)
+      timeRangeRef.current.textContent = `${fmtUTC(s)} – ${fmtUTC(wrapMin(s + d))} UTC`;
+    if (durRef.current) durRef.current.textContent = `${d} min`;
+  }, []);
 
   const handleShareLink = useCallback(() => {
     navigator.clipboard?.writeText(window.location.href).then(() => {
@@ -142,7 +145,10 @@ function App() {
 
       <div
         className="dark min-h-screen font-mono text-app-fg mobile-ls:overflow-x-auto"
-        style={{ background: "radial-gradient(ellipse 80% 60% at 15% 0%, #1e2330, #14171c)" }}
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 60% at 15% 0%, #1e2330, #14171c)",
+        }}
       >
         <div className="mx-auto w-[90%] max-w-375 px-0 py-8 pb-20 mobile-ls:w-[96%] mobile-ls:min-w-135 mobile-ls:py-3 mobile-ls:pb-4">
           <Controls
@@ -159,16 +165,13 @@ function App() {
             ref={headerContainerRef}
             className="mt-5 flex items-center justify-between gap-2 mobile-ls:mt-2"
           >
-            <div className="flex min-w-0 flex-1 items-baseline gap-1.5 truncate font-mono text-xs text-app-muted">
+            <div className="flex min-w-0 flex-1 items-baseline gap-1.5 truncate font-mono text-[0.9375rem] font-semibold tracking-tight text-app-fg">
               <span>{fmtAnchorDate(0, dateBasis)}</span>
-              <span className="text-app-border">·</span>
-              <span
-                ref={timeRangeRef}
-                className="text-[0.9375rem] font-semibold tracking-tight text-app-fg"
-              >
+              <span className="opacity-30">·</span>
+              <span ref={timeRangeRef}>
                 {`${fmtUTC(startT)} – ${fmtUTC(endT)} UTC`}
               </span>
-              <span className="text-app-border">·</span>
+              <span className="opacity-30">·</span>
               <span ref={durRef}>{dur} min</span>
             </div>
             <div className="flex shrink-0 items-center gap-1">
