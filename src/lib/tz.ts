@@ -156,3 +156,16 @@ export function snapToGrid(t: number, dur: number): number {
     Math.min(maxStart, Math.round(t / CELL_MINUTES) * CELL_MINUTES),
   );
 }
+
+/** Add n days to an ISO date string (YYYY-MM-DD), handles month/year overflow. */
+export function addDaysToISO(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + n));
+  return (
+    date.getUTCFullYear() +
+    "-" +
+    String(date.getUTCMonth() + 1).padStart(2, "0") +
+    "-" +
+    String(date.getUTCDate()).padStart(2, "0")
+  );
+}

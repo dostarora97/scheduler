@@ -13,7 +13,6 @@ import {
   tzAbbrev,
   wrapMin,
 } from "@/lib/tz";
-import { TrackCells } from "./TrackCells";
 
 const LEVEL_COLOR: Record<PainLevel, string> = {
   ok: "text-signal-ok",
@@ -21,11 +20,11 @@ const LEVEL_COLOR: Record<PainLevel, string> = {
   heavy: "text-signal-heavy",
 };
 
-const REGION_NAME_MAX_LEN = 40; // cap name length to keep label column stable
-const REGION_NAME_MIN_SIZE = 4; // minimum input size attribute (characters)
-const DAY_BADGE_TOP_OFFSET = "-0.4em"; // superscript lift for the +1/-1 day badge
+const REGION_NAME_MAX_LEN = 40;
+const REGION_NAME_MIN_SIZE = 4;
+const DAY_BADGE_TOP_OFFSET = "-0.4em";
 
-interface RegionRowProps {
+interface RowBaseProps {
   region: Region;
   offset: number;
   workStart: number;
@@ -33,16 +32,20 @@ interface RegionRowProps {
   slotUTC: number;
   dur: number;
   dateBasis: string;
-  selectedStartCol: number;
-  selectedEndCol: number;
   canRemove: boolean;
-  dragOverlay?: boolean;
-  onNameChange: (name: string) => void;
-  onRemove: () => void;
-  onCellClick: (col: number) => void;
+  /** Whether the row is hovered (synced externally so grip + remove button show together) */
+  isHovered?: boolean;
+  onHoverEnter?: () => void;
+  onHoverLeave?: () => void;
 }
 
-export function RegionRow({
+// ─── Left column: grip + name/tz + times ─────────────────────────────────────
+
+interface RegionRowLeftProps extends RowBaseProps {
+  dragOverlay?: boolean;
+  onNameChange: (name: string) => void;
+}
+export function RegionRowLeft({
   region,
   offset,
   workStart,
@@ -50,14 +53,12 @@ export function RegionRow({
   slotUTC,
   dur,
   dateBasis,
-  selectedStartCol,
-  selectedEndCol,
-  canRemove,
-  dragOverlay,
+  isHovered = false,
+  dragOverlay = false,
+  onHoverEnter,
+  onHoverLeave,
   onNameChange,
-  onRemove,
-  onCellClick,
-}: RegionRowProps) {
+}: RegionRowLeftProps) {
   const {
     attributes,
     listeners,
@@ -65,18 +66,8 @@ export function RegionRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({
-    id: region.id,
-  });
+  } = useSortable({ id: region.id, disabled: dragOverlay });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    // When dragging, make original slot invisible (space preserved) so DragOverlay clone is the only visible copy
-    opacity: isDragging && !dragOverlay ? 0 : 1,
-  };
-
-  // Local draft so edits don't fire onNameChange (→ URL update) on every keystroke
   const [draftName, setDraftName] = useState(region.name);
   useEffect(() => setDraftName(region.name), [region.name]);
 
@@ -85,7 +76,7 @@ export function RegionRow({
     if (trimmed && trimmed !== region.name) {
       onNameChange(trimmed);
     } else {
-      setDraftName(region.name); // revert empty or unchanged
+      setDraftName(region.name);
     }
   };
 
@@ -95,7 +86,6 @@ export function RegionRow({
   const localEnd = wrapMin(rawEnd);
   const startDayOff = dayOffsetOf(rawStart);
   const endDayOff = dayOffsetOf(rawEnd);
-
   const startColor = LEVEL_COLOR[instantLevel(localStart, workStart, workEnd)];
   const endColor = LEVEL_COLOR[instantLevel(localEnd, workStart, workEnd)];
   const tzLabel = useMemo(() => tzAbbrev(region.tz), [region.tz]);
@@ -103,14 +93,22 @@ export function RegionRow({
   return (
     <div
       ref={setNodeRef}
-      style={style}
-      className="group flex items-stretch border-t border-app-border py-1.5 transition-colors duration-75 first:border-t-0 hover:bg-white/[0.03]"
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging && !dragOverlay ? 0 : 1,
+        background: isHovered ? "rgba(255,255,255,0.03)" : undefined,
+      }}
+      className="flex h-[3.75rem] items-center border-t border-app-border py-1.5 transition-colors duration-75 first:border-t-0"
+      onMouseEnter={onHoverEnter}
+      onMouseLeave={onHoverLeave}
     >
-      {/* Grip — w-5 = 20px, 6-dot drag indicator */}
+      {/* Grip */}
       <button
         {...attributes}
         {...listeners}
-        className="flex w-5 shrink-0 cursor-grab items-center justify-center text-app-muted opacity-0 transition-opacity group-hover:opacity-60 focus-visible:opacity-60 active:cursor-grabbing"
+        className="flex w-5 shrink-0 cursor-grab items-center justify-center text-app-muted transition-opacity focus-visible:opacity-60 active:cursor-grabbing"
+        style={{ opacity: isHovered ? 0.6 : 0 }}
         aria-label="Drag to reorder"
       >
         <svg
@@ -129,8 +127,8 @@ export function RegionRow({
         </svg>
       </button>
 
-      {/* Label column — w-[20.5rem] desktop, w-[13.5rem] mobile landscape; ml-2 gap after grip */}
-      <div className="ml-2 flex w-82 shrink-0 items-stretch gap-1.5 pr-2 mobile-ls:w-54">
+      {/* Label column */}
+      <div className="ml-2 flex w-82 shrink-0 items-center gap-1.5 pr-2 mobile-ls:w-54">
         {/* Name + tz abbrev */}
         <div className="flex min-w-20 flex-1 flex-col justify-center gap-0.5 overflow-hidden">
           <input
@@ -154,7 +152,7 @@ export function RegionRow({
           <span className="text-[11px] text-app-fg opacity-50">{tzLabel}</span>
         </div>
 
-        {/* Start time — horizontal [time][+N superscript] */}
+        {/* Start time */}
         <div className="flex w-28 shrink-0 items-center font-mono text-lg font-medium">
           <span className={startColor}>{fmtLocal(localStart)}</span>
           <span
@@ -172,7 +170,7 @@ export function RegionRow({
           </span>
         </div>
 
-        {/* End time — hidden on mobile landscape to save label width */}
+        {/* End time — hidden on mobile landscape */}
         <div className="flex w-28 shrink-0 items-center font-mono text-lg font-medium mobile-ls:hidden">
           <span className={endColor}>{fmtLocal(localEnd)}</span>
           <span
@@ -186,24 +184,44 @@ export function RegionRow({
           </span>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Track cells */}
-      <TrackCells
-        regionName={region.name}
-        offset={offset}
-        workStart={workStart}
-        workEnd={workEnd}
-        selectedStartCol={selectedStartCol}
-        selectedEndCol={selectedEndCol}
-        onCellClick={onCellClick}
-      />
+// ─── Right column: remove button ─────────────────────────────────────────────
 
-      {/* Remove button */}
+interface RegionRowRemoveProps {
+  region: Region;
+  canRemove: boolean;
+  isHovered?: boolean;
+  onHoverEnter?: () => void;
+  onHoverLeave?: () => void;
+  onRemove: () => void;
+}
+
+export function RegionRowRemoveButton({
+  region,
+  canRemove,
+  isHovered = false,
+  onHoverEnter,
+  onHoverLeave,
+  onRemove,
+}: RegionRowRemoveProps) {
+  return (
+    <div
+      className="flex h-[3.75rem] items-center border-t border-app-border py-1.5 transition-colors duration-75 first:border-t-0"
+      style={{ background: isHovered ? "rgba(255,255,255,0.03)" : undefined }}
+      onMouseEnter={onHoverEnter}
+      onMouseLeave={onHoverLeave}
+    >
       <Button
         variant="ghost"
         size="icon"
-        className="ml-2 size-6 shrink-0 self-center opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-        style={{ visibility: canRemove ? "visible" : "hidden" }}
+        className="ml-2 size-6 shrink-0 self-center transition-opacity focus-visible:opacity-100"
+        style={{
+          visibility: canRemove ? "visible" : "hidden",
+          opacity: isHovered ? 1 : 0,
+        }}
         onClick={onRemove}
         aria-label={region.name ? `Delete ${region.name}` : "Delete region"}
       >
@@ -212,3 +230,8 @@ export function RegionRow({
     </div>
   );
 }
+
+// ─── Legacy export: full row for DragOverlay clone ───────────────────────────
+// Renders only the left-column content (track is in the shared scroll container)
+
+export { RegionRowLeft as RegionRow };

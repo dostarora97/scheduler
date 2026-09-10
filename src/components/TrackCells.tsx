@@ -2,8 +2,10 @@ import { fmtLocal, instantLevel, type PainLevel, wrapMin } from "@/lib/tz";
 
 const CELLS = 48;
 const CELL_MINUTES = 30; // each cell represents 30 minutes
-const HOUR_GRIDLINE = "1px solid rgba(0,0,0,0.35)"; // darker line every 60 min (every 2 cells)
-const HALF_HOUR_GRIDLINE = "1px solid rgba(0,0,0,0.12)"; // lighter line every 30 min
+const HOUR_GRIDLINE = "1px solid rgba(0,0,0,0.20)"; // darker line every 60 min
+const HALF_HOUR_GRIDLINE = "1px solid rgba(0,0,0,0.08)"; // lighter line every 30 min
+// Midnight boundary — box-shadow so it is purely visual (zero layout pixels)
+const MIDNIGHT_SHADOW = "inset 2px 0 0 rgba(255,255,255,0.18)";
 
 const pastelBg: Record<PainLevel, string> = {
   ok: "var(--color-green-pastel)",
@@ -24,6 +26,8 @@ interface TrackCellsProps {
   selectedStartCol: number;
   selectedEndCol: number;
   onCellClick: (col: number) => void;
+  /** True when this track strip starts a new day copy (shows midnight boundary line) */
+  isFirstCopy?: boolean;
 }
 
 export function TrackCells({
@@ -34,10 +38,11 @@ export function TrackCells({
   selectedStartCol,
   selectedEndCol,
   onCellClick,
+  isFirstCopy = false,
 }: TrackCellsProps) {
   return (
     <div
-      className="flex h-12 flex-1 cursor-pointer overflow-hidden rounded-sm mobile-ls:h-9"
+      className="flex h-full flex-1 cursor-pointer overflow-hidden rounded-sm"
       aria-label={`${regionName} timeline`}
     >
       {Array.from({ length: CELLS }, (_, i) => {
@@ -46,6 +51,15 @@ export function TrackCells({
         const lvl = instantLevel(localMin, workStart, workEnd);
         const isSelected = i >= selectedStartCol && i < selectedEndCol;
         const bg = isSelected ? solidBg[lvl] : pastelBg[lvl];
+
+        // Midnight boundary: box-shadow on the very first cell of a non-first copy
+        const midnightShadow =
+          isFirstCopy && i === 0 ? MIDNIGHT_SHADOW : undefined;
+
+        // Normal hourly / half-hourly gridlines (left border on cells > 0)
+        const borderLeft =
+          i === 0 ? "none" : i % 2 === 0 ? HOUR_GRIDLINE : HALF_HOUR_GRIDLINE;
+
         return (
           <button
             key={i}
@@ -56,12 +70,8 @@ export function TrackCells({
             className="h-full flex-1 cursor-pointer border-0 p-0"
             style={{
               background: bg,
-              borderLeft:
-                i === 0
-                  ? "none"
-                  : i % 2 === 0
-                    ? HOUR_GRIDLINE
-                    : HALF_HOUR_GRIDLINE,
+              borderLeft,
+              boxShadow: midnightShadow,
             }}
             onClick={() => onCellClick(i)}
           />
