@@ -4,6 +4,7 @@ import {
   parseAsString,
   useQueryStates,
 } from "nuqs";
+import { getOffsetMinutes, TZ_OPTIONS } from "./tz";
 
 export interface RegionParam {
   id: string;
@@ -11,18 +12,51 @@ export interface RegionParam {
   tz: string;
 }
 
-const DEFAULT_REGIONS: RegionParam[] = [
-  { id: "1", name: "Palo Alto", tz: "America/Los_Angeles" },
-  { id: "2", name: "Germany", tz: "Europe/Berlin" },
-  { id: "3", name: "India", tz: "Asia/Kolkata" },
-];
-
 const DEFAULT_WORK_START = "09:00";
 const DEFAULT_WORK_END = "17:00";
-// TODO: seed via findBestSlot(DEFAULT_REGIONS, DEFAULT_DURATION_MIN, workStart, workEnd, todayISO())
-//   so first-load picks the least-painful time instead of a hardcoded 09:00 UTC
-const DEFAULT_SLOT_UTC = 540; // 09:00 UTC — hardcoded for now
 const DEFAULT_DURATION_MIN = 60;
+
+/** Find the TZ_OPTIONS entry whose UTC offset is closest to the user's local zone. */
+function detectLocalRegion(): RegionParam {
+  try {
+    const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    // Exact match — user's zone is one of our supported ones
+    const exact = TZ_OPTIONS.find(([tz]) => tz === localTz);
+    if (exact) {
+      return { id: "1", name: exact[1].split(" / ")[0], tz: exact[0] };
+    }
+
+    // Closest by current UTC-offset delta
+    const now = new Date();
+    const localOffset = getOffsetMinutes(now, localTz);
+    let closest = TZ_OPTIONS[0];
+    let minDiff = Infinity;
+    for (const entry of TZ_OPTIONS) {
+      const diff = Math.abs(getOffsetMinutes(now, entry[0]) - localOffset);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = entry;
+      }
+    }
+    return { id: "1", name: closest[1].split(" / ")[0], tz: closest[0] };
+  } catch {
+    return { id: "1", name: "Palo Alto", tz: "America/Los_Angeles" };
+  }
+}
+
+/** Next upcoming UTC 30-minute boundary from now. */
+function nextSlotUTC(): number {
+  const now = new Date();
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const next = Math.ceil((utcMinutes + 1) / 30) * 30; // +1 avoids landing exactly on the current mark
+  return next >= 1440 ? 0 : next;
+}
+
+// Computed once at page load; URL params override both when present
+const DEFAULT_REGION = detectLocalRegion();
+// TODO: swap with findBestSlot once best-slot logic is re-wired
+const DEFAULT_SLOT_UTC = nextSlotUTC();
 
 function todayISO(): string {
   const d = new Date();
@@ -49,7 +83,7 @@ const parseAsRegions = createParser<RegionParam[]>({
         };
       });
     } catch {
-      return DEFAULT_REGIONS;
+      return [DEFAULT_REGION];
     }
   },
   serialize(regions) {
@@ -63,7 +97,7 @@ const parseAsRegions = createParser<RegionParam[]>({
 });
 
 export const searchParams = {
-  regions: parseAsRegions.withDefault(DEFAULT_REGIONS),
+  regions: parseAsRegions.withDefault([DEFAULT_REGION]),
   slot: parseAsInteger.withDefault(DEFAULT_SLOT_UTC),
   dur: parseAsInteger.withDefault(DEFAULT_DURATION_MIN),
   date: parseAsString.withDefault(todayISO()),
