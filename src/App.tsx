@@ -219,7 +219,6 @@ function App() {
               onRegionsChange={(r) => setParams({ regions: r, slot })}
               onSlotChange={(s) => setParams({ slot: s })}
               onDurChange={(d) => setParams({ dur: d })}
-              onDateChange={(v) => setParams({ date: v })}
               onLiveChange={handleLiveChange}
             />
           </div>
