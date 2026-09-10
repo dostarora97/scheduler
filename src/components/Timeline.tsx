@@ -51,7 +51,8 @@ const SLOT_STYLE = {
   background: "rgba(232,230,225,0.10)",
   border: "2px solid rgba(232,230,225,0.95)",
   borderRadius: "5px",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 20px rgba(0,0,0,0.55)",
+  boxShadow:
+    "inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 20px rgba(0,0,0,0.55)",
 } as const;
 
 // Drag overlay clone style (elevated, slightly scaled up)
@@ -91,6 +92,8 @@ export function Timeline({
   onLiveChange,
 }: TimelineProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const nowLineRef = useRef<HTMLDivElement>(null);
+  const trackWidthRef = useRef(0); // keeps rAF loop free of stale closures
   const [trackWidth, setTrackWidth] = useState(0);
   const [trackHeight, setTrackHeight] = useState(0);
   const [labelW, setLabelW] = useState(LABEL_W_FALLBACK);
@@ -102,6 +105,28 @@ export function Timeline({
   // Sync when slot/dur change from outside (cell click, URL paste, keyboard)
   useEffect(() => setLiveSlot(slotUTC), [slotUTC]);
   useEffect(() => setLiveDur(dur), [dur]);
+
+  // Keep ref in sync so the rAF loop below never closes over a stale trackWidth
+  useEffect(() => {
+    trackWidthRef.current = trackWidth;
+  }, [trackWidth]);
+
+  // Current UTC time indicator — direct DOM write every frame, zero React overhead
+  useEffect(() => {
+    let rafId: number;
+    const tick = () => {
+      const w = trackWidthRef.current;
+      if (nowLineRef.current && w > 0) {
+        const n = new Date();
+        const utcMin =
+          n.getUTCHours() * 60 + n.getUTCMinutes() + n.getUTCSeconds() / 60;
+        nowLineRef.current.style.left = `${(utcMin / 1440) * w}px`;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
 
   // Read --label-w CSS variable so the overlay tracks the responsive label column width
   useEffect(() => {
@@ -260,6 +285,18 @@ export function Timeline({
             className="pointer-events-none absolute inset-y-0"
             style={{ left: labelW, right: REMOVE_W, zIndex: 10 }}
           >
+            {/* Option B: hairline + top dot — current UTC time, rAF-driven */}
+            <div
+              ref={nowLineRef}
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-y-0 -translate-x-px"
+              style={{ zIndex: 6 }}
+            >
+              {/* dot at top — HDR white, no glow */}
+              <div className="absolute top-0 -left-[3px] size-[6px] rounded-full bg-white" />
+              {/* hairline — HDR bright with glow */}
+              <div className="absolute inset-y-0 left-0 w-px bg-white/70 shadow-[0_0_4px_rgba(255,255,255,0.5)]" />
+            </div>
             {trackWidth > 0 && (
               <Rnd
                 key={`${slotUTC}-${dur}-${trackHeight}`}
@@ -388,11 +425,7 @@ export function Timeline({
                   },
                   {
                     label: "Europe",
-                    tzs: [
-                      "Europe/Berlin",
-                      "Europe/London",
-                      "Europe/Paris",
-                    ],
+                    tzs: ["Europe/Berlin", "Europe/London", "Europe/Paris"],
                   },
                   {
                     label: "Asia & Pacific",
@@ -414,7 +447,7 @@ export function Timeline({
                   if (groupOptions.length === 0) return null;
                   return (
                     <div key={label}>
-                      <p className="px-2 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-app-muted/60 first:pt-1">
+                      <p className="px-2 pt-2 pb-0.5 text-[10px] font-semibold tracking-widest text-app-muted/60 uppercase first:pt-1">
                         {label}
                       </p>
                       {groupOptions.map(([v, l]) => (
@@ -454,7 +487,10 @@ export function Timeline({
         }}
       >
         {activeRegion && (
-          <div style={DRAG_CLONE_STYLE} className="animate-[cloneEnter_150ms_ease-out]">
+          <div
+            style={DRAG_CLONE_STYLE}
+            className="animate-[cloneEnter_150ms_ease-out]"
+          >
             <RegionRow
               region={activeRegion}
               offset={activeRegion.offset}
