@@ -144,7 +144,7 @@ export function Controls({
           onChange={onWorkStartChange}
           aria-label="Work start time"
         />
-        <span className="text-xs text-app-muted/60">–</span>
+        <span className="text-xs text-app-muted/50">–</span>
         <TimeField
           id="work-end"
           name="work-end"
@@ -154,7 +154,7 @@ export function Controls({
         />
       </div>
 
-      <div className="h-4 w-px bg-app-border" />
+      <div className="h-4 w-px bg-app-muted/50" />
 
       {/* Date group */}
       <div className="flex items-center gap-2">
