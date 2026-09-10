@@ -1,0 +1,129 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-10T00:00:00.000Z",
+  "title": "Design System: Overlap Finder",
+  "extensions": {
+    "colorMeta": {
+      "page-void":         { "role": "neutral",   "displayName": "Void Black",         "canonical": "#14171c", "tonalRamp": ["#0a0c0f","#10131a","#14171c","#1b1f27","#222840","#3a4156","#5c6480","#8b92a0"] },
+      "surface-deep":      { "role": "neutral",   "displayName": "Surface Deep",       "canonical": "#1b1f27", "tonalRamp": ["#0d0f14","#14171c","#1b1f27","#1e2330","#242b3a","#3a4156","#5c6480","#8b92a0"] },
+      "surface-elevated":  { "role": "neutral",   "displayName": "Surface Elevated",   "canonical": "#1e2330", "tonalRamp": ["#0d0f14","#14171c","#1b1f27","#1e2330","#252d40","#3a4456","#5c6780","#8b92a0"] },
+      "border-subtle":     { "role": "neutral",   "displayName": "Border Subtle",      "canonical": "#2a2f3a", "tonalRamp": ["#14171c","#1e2330","#2a2f3a","#3a4156","#4d5570","#7080a0","#a0aac0","#c8cdd8"] },
+      "text-secondary":    { "role": "neutral",   "displayName": "Text Secondary",     "canonical": "#8b92a0", "tonalRamp": ["#1e2330","#2a2f3a","#3a4156","#5c6480","#8b92a0","#a8afc0","#c8cdd8","#e8e6e1"] },
+      "text-primary":      { "role": "neutral",   "displayName": "Text Primary",       "canonical": "#e8e6e1", "tonalRamp": ["#3a3830","#5a5850","#8a8880","#b8b6b0","#cccac4","#dcdad5","#e8e6e1","#f5f3ef"] },
+      "signal-ok":         { "role": "secondary", "displayName": "Signal OK — Teal",   "canonical": "#4fa98c", "tonalRamp": ["#0f2820","#1a4035","#2a6050","#3d8570","#4fa98c","#72c0a8","#9dd5c4","#c8ece4"] },
+      "signal-mild":       { "role": "tertiary",  "displayName": "Signal Mild — Amber","canonical": "#d9a052", "tonalRamp": ["#2a1a08","#4a2e10","#7a4e20","#a87030","#d9a052","#e8b878","#f0ceaa","#f8e8d0"] },
+      "signal-heavy":      { "role": "primary",   "displayName": "Signal Heavy — Red", "canonical": "#c4573f", "tonalRamp": ["#280e0a","#481810","#7a2a1c","#a84030","#c4573f","#d87860","#e8a898","#f5d0c8"] },
+      "status-ok-label":   { "role": "secondary", "displayName": "Status OK Label",    "canonical": "#4ade80", "tonalRamp": ["#0f2d1a","#1a4d2c","#28783f","#38a858","#4ade80","#78e8a0","#a8f0c4","#d0f8e0"] },
+      "status-mild-label": { "role": "tertiary",  "displayName": "Status Mild Label",  "canonical": "#fbbf24", "tonalRamp": ["#2a1a00","#4a3400","#785800","#b88800","#fbbf24","#fcd060","#fde298","#fff0c8"] },
+      "status-heavy-label":{ "role": "primary",   "displayName": "Status Heavy Label", "canonical": "#f87171", "tonalRamp": ["#280a0a","#481010","#7a1a1a","#b03030","#f87171","#f89898","#f8c0c0","#f8e0e0"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Time Display", "purpose": "Region start and end times — the primary data on screen." },
+      "headline": { "displayName": "Headline",     "purpose": "Region names (editable) and the UTC range header line." },
+      "body":     { "displayName": "Body",         "purpose": "Controls copy, secondary labels, Add region text." },
+      "label":    { "displayName": "Label",        "purpose": "Control group labels: Work hours, Date. Clearly secondary to timeline." },
+      "micro":    { "displayName": "Micro",        "purpose": "Timezone abbreviations (PDT, GMT+2). Supplemental metadata." }
+    },
+    "shadows": [
+      { "name": "slot-window",  "value": "0 2px 10px rgba(0,0,0,0.5)",                                                    "purpose": "The meeting-slot Rnd overlay. Lifts it above the cell grid and signals interactivity." },
+      { "name": "drag-clone",   "value": "0 16px 48px rgba(0,0,0,0.65), 0 0 0 1px rgba(232,230,225,0.08)",                "purpose": "Row during drag-to-reorder. Deep shadow signals genuine physical lift." }
+    ],
+    "motion": [
+      { "name": "drop-snap",    "value": "cubic-bezier(0.2, 0, 0, 1)",  "duration": "200ms", "purpose": "Row drop animation: fast-in, smooth decelerate — decisive, no overshoot." },
+      { "name": "state-quick",  "value": "ease",                         "duration": "150ms", "purpose": "Button hover, opacity fades, border transitions." },
+      { "name": "reduced-motion", "note": "prefers-reduced-motion overrides all transitions with 0.01ms !important. Signal colors flip instantly." }
+    ],
+    "breakpoints": [
+      { "name": "mobile-ls", "query": "@media (max-height: 500px) and (orientation: landscape)", "purpose": "Phones in landscape. Triggers compact layout: shorter rows, hidden end-time column, reduced padding." },
+      { "name": "mobile-pt", "query": "@media (max-width: 500px) and (orientation: portrait)",  "purpose": "Phones in portrait. Shows the rotate-to-landscape gate overlay." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Ghost Icon Button",
+      "kind": "button",
+      "refersTo": "btn-icon-ghost",
+      "description": "Icon-only action button (copy meeting times). Transparent at rest; faint tint on hover.",
+      "html": "<button class=\"ds-btn-icon-ghost\" title=\"Copy meeting times\">\n  <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"9\" y=\"9\" width=\"13\" height=\"13\" rx=\"2\" ry=\"2\"></rect><path d=\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\"></path></svg>\n</button>",
+      "css": ".ds-btn-icon-ghost { display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; padding: 0; border-radius: 0.5rem; border: 1px solid transparent; background: transparent; color: #8b92a0; cursor: pointer; font-family: 'JetBrains Mono Variable', monospace; transition: background 150ms ease, color 150ms ease; outline: none; flex-shrink: 0; }\n.ds-btn-icon-ghost:hover { background: rgba(255,255,255,0.05); color: #e8e6e1; }\n.ds-btn-icon-ghost:focus-visible { box-shadow: 0 0 0 2px rgba(139,146,160,0.5); }"
+    },
+    {
+      "name": "Region Row",
+      "kind": "custom",
+      "description": "Primary data row: grip handle, label block (name + timezone), start/end times, timeline track, remove button.",
+      "html": "<div class=\"ds-region-row\">\n  <button class=\"ds-region-row__grip\" aria-label=\"Drag to reorder\">\n    <svg width=\"14\" height=\"14\" viewBox=\"0 0 16 16\" fill=\"currentColor\" aria-hidden=\"true\"><circle cx=\"5\" cy=\"4\" r=\"1.5\"/><circle cx=\"5\" cy=\"8\" r=\"1.5\"/><circle cx=\"5\" cy=\"12\" r=\"1.5\"/><circle cx=\"11\" cy=\"4\" r=\"1.5\"/><circle cx=\"11\" cy=\"8\" r=\"1.5\"/><circle cx=\"11\" cy=\"12\" r=\"1.5\"/></svg>\n  </button>\n  <div class=\"ds-region-row__label\">\n    <div class=\"ds-region-row__name\">Palo Alto</div>\n    <div class=\"ds-region-row__tz\">PDT</div>\n  </div>\n  <div class=\"ds-region-row__time ds-region-row__time--ok\">02:00 AM</div>\n  <div class=\"ds-region-row__time ds-region-row__time--ok\">03:00 AM</div>\n  <div class=\"ds-region-row__track\"><!-- 48 cells --></div>\n  <button class=\"ds-region-row__remove\" aria-label=\"Remove Palo Alto\">\n    <svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><line x1=\"18\" y1=\"6\" x2=\"6\" y2=\"18\"></line><line x1=\"6\" y1=\"6\" x2=\"18\" y2=\"18\"></line></svg>\n  </button>\n</div>",
+      "css": ".ds-region-row { display: flex; align-items: stretch; border-top: 1px solid #2a2f3a; padding: 6px 0; font-family: 'JetBrains Mono Variable', monospace; }\n.ds-region-row:first-child { border-top: none; }\n.ds-region-row__grip { display: flex; width: 1.25rem; flex-shrink: 0; align-items: center; justify-content: center; cursor: grab; color: #8b92a0; opacity: 0; transition: opacity 150ms ease; background: transparent; border: none; padding: 0; }\n.ds-region-row:hover .ds-region-row__grip { opacity: 0.6; }\n.ds-region-row__label { display: flex; flex-direction: column; justify-content: center; gap: 2px; flex: 1; min-width: 5rem; overflow: hidden; padding-right: 6px; }\n.ds-region-row__name { font-size: 0.8125rem; font-weight: 600; color: #e8e6e1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.ds-region-row__tz { font-size: 0.6875rem; color: #8b92a0; }\n.ds-region-row__time { display: flex; align-items: center; width: 7rem; flex-shrink: 0; font-size: 1.125rem; font-weight: 500; font-family: 'JetBrains Mono Variable', monospace; }\n.ds-region-row__time--ok { color: #4ade80; }\n.ds-region-row__time--mild { color: #fbbf24; }\n.ds-region-row__time--heavy { color: #f87171; }\n.ds-region-row__track { flex: 1; height: 3rem; background: #2a2f3a; border-radius: 2px; }\n.ds-region-row__remove { display: flex; align-items: center; justify-content: center; width: 2.75rem; height: 100%; flex-shrink: 0; opacity: 0; transition: opacity 150ms ease; background: transparent; border: none; color: #8b92a0; cursor: pointer; }\n.ds-region-row:hover .ds-region-row__remove { opacity: 1; }"
+    },
+    {
+      "name": "Track Cell — OK",
+      "kind": "custom",
+      "description": "Individual 30-minute timeline cell in the 'within work hours' state. Solid for selected, pastel for unselected.",
+      "html": "<div style=\"display:flex;gap:1px\">\n  <button class=\"ds-cell ds-cell--ok-pastel\" type=\"button\"></button>\n  <button class=\"ds-cell ds-cell--ok\" type=\"button\"></button>\n  <button class=\"ds-cell ds-cell--ok\" type=\"button\"></button>\n  <button class=\"ds-cell ds-cell--mild\" type=\"button\"></button>\n  <button class=\"ds-cell ds-cell--mild-pastel\" type=\"button\"></button>\n</div>",
+      "css": ".ds-cell { flex: 1; height: 3rem; border: none; padding: 0; cursor: pointer; }\n.ds-cell--ok { background: #4fa98c; }\n.ds-cell--ok-pastel { background: color-mix(in srgb, #4fa98c, white 30%); }\n.ds-cell--mild { background: #d9a052; }\n.ds-cell--mild-pastel { background: color-mix(in srgb, #d9a052, white 30%); }\n.ds-cell--heavy { background: #c4573f; }\n.ds-cell--heavy-pastel { background: color-mix(in srgb, #c4573f, white 30%); }"
+    },
+    {
+      "name": "Selection Slot Overlay",
+      "kind": "custom",
+      "description": "The meeting-time selection window drawn over all track rows. Near-transparent fill; the cells changing from pastel to solid carry the primary selection signal.",
+      "html": "<div class=\"ds-slot-overlay\"></div>",
+      "css": ".ds-slot-overlay { position: absolute; inset-y: 0; width: 4rem; border-radius: 5px; background: rgba(232,230,225,0.06); border: 2px solid rgba(232,230,225,0.82); box-shadow: 0 2px 10px rgba(0,0,0,0.5); cursor: grab; }\n.ds-slot-overlay:active { cursor: grabbing; }"
+    },
+    {
+      "name": "Add Region Row",
+      "kind": "custom",
+      "description": "Dashed affordance at the bottom of the region list. A native <select> overlays the row invisibly; clicking anywhere on the row opens the timezone picker.",
+      "html": "<div class=\"ds-add-region\">\n  <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><line x1=\"12\" y1=\"5\" x2=\"12\" y2=\"19\"></line><line x1=\"5\" y1=\"12\" x2=\"19\" y2=\"12\"></line></svg>\n  <span>Add region</span>\n</div>",
+      "css": ".ds-add-region { display: flex; align-items: center; justify-content: center; gap: 4px; border: 1px dashed #2a2f3a; border-radius: 6px; padding: 6px; color: #8b92a0; font-family: 'JetBrains Mono Variable', monospace; font-size: 0.75rem; cursor: pointer; transition: border-color 150ms ease, color 150ms ease, background 150ms ease; }\n.ds-add-region:hover { border-color: #8b92a0; color: #e8e6e1; background: rgba(255,255,255,0.05); }"
+    },
+    {
+      "name": "Time Input",
+      "kind": "input",
+      "refersTo": "input-time",
+      "description": "Work-hours time picker. Monospace, compact, dark-themed. Matches the overall tool density.",
+      "html": "<input class=\"ds-time-input\" type=\"time\" value=\"09:00\" aria-label=\"Work start time\" />",
+      "css": ".ds-time-input { height: 1.75rem; width: 8rem; padding: 0 10px; border-radius: 0.5rem; border: 1px solid #2a2f3a; background: rgba(255,255,255,0.03); color: #e8e6e1; font-family: 'JetBrains Mono Variable', monospace; font-size: 0.75rem; outline: none; transition: border-color 150ms ease; }\n.ds-time-input:focus-visible { border-color: #8b92a0; box-shadow: 0 0 0 3px rgba(139,146,160,0.2); }"
+    },
+    {
+      "name": "Drag Clone",
+      "kind": "custom",
+      "description": "The floating row clone during drag-to-reorder. Elevated surface with a deep shadow — looks physically lifted.",
+      "html": "<div class=\"ds-drag-clone\">\n  <!-- RegionRow content here -->\n  <span style=\"color:#8b92a0;font-family:'JetBrains Mono Variable',monospace;font-size:0.8125rem;padding:12px\">Dragging row...</span>\n</div>",
+      "css": ".ds-drag-clone { border-radius: 6px; background: #1e2330; box-shadow: 0 16px 48px rgba(0,0,0,0.65), 0 0 0 1px rgba(232,230,225,0.08); transform: scale(1.015); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Flight Deck",
+    "overview": "Overlap Finder is a precision instrument, not a dashboard. Every element earns its place. The dark field isn't atmospheric decoration — it's operational context, the same reason flight decks and control rooms go dark: ambient distraction falls away and signal becomes the only thing that matters. The interface does not announce itself; it disappears when you're working.\n\nThe visual grammar is monospace throughout, applied globally from root rather than selectively to 'data' elements. This is a deliberate commitment: treating every glyph as a character in a fixed grid gives the layout mechanical regularity. Columns align by construction. Time strings are the same width everywhere, always. The font is JetBrains Mono Variable — chosen for legibility at small sizes and for the quiet authority of a tool designed for developers and schedulers who prefer precision over polish.\n\nColor means exactly one thing in this system: status. The teal, amber, and red palette communicates work-hours overlap quality and nothing else. There are no accent colors for hover states, no brand-colored CTAs, no decorative gradients. When you see a color, it is telling you something about time.",
+    "keyCharacteristics": [
+      "Void & Signal — the background recedes; all color is semantic payload",
+      "Single monospace font throughout, zero exceptions",
+      "One card in the entire interface (the timeline map); everything else is unboxed content",
+      "No visible page title or heading — the tool identifies itself through function",
+      "Density is controlled, not avoided: rows are compact but not cramped"
+    ],
+    "rules": [
+      { "name": "The Signal-Only Rule", "body": "The three signal hues (teal, amber, red) are owned by the work-hours overlap system. They must not be reused for hover states, brand emphasis, UI chrome, or any purpose unrelated to temporal status. Their meaning depends entirely on not appearing elsewhere.", "section": "colors" },
+      { "name": "The No-Heading Rule", "body": "The application name 'Overlap Finder' lives only in the document <title>. It is never rendered as visible text on the page. A tool that works needs no label to announce what it does.", "section": "colors" },
+      { "name": "The One Card Rule", "body": "The timeline map is the only bordered, background-filled container in the interface. Controls and metadata are plain, unboxed content. Any additional card treatment is a violation of this invariant.", "section": "colors" },
+      { "name": "The One Voice Rule", "body": "JetBrains Mono Variable is the only typeface. Never mix in a sans-serif, serif, or different monospace. The visual system depends on uniform character width across every element.", "section": "typography" },
+      { "name": "The Zero-Padding Rule", "body": "Time strings are always zero-padded to two digits: 02:00 AM, never 2:00 AM. This guarantees pixel-identical string widths in monospace, which keeps the time columns aligned by construction rather than by luck.", "section": "typography" },
+      { "name": "The Flat-By-Default Rule", "body": "Surfaces are tonally distinct but cast no shadow at rest. Shadows are reserved for genuinely interactive elevated states — the slot window and the drag clone — and are never decorative.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do use JetBrains Mono Variable for every text element — region names, time values, labels, copy. Zero exceptions, zero mixed-font sections.",
+      "Do zero-pad time hours: 02:00 AM, never 2:00 AM. 8-character time strings are a structural requirement for column alignment.",
+      "Do reserve teal / amber / red for work-hours status only. These colors communicate overlap quality; they are not available for hover states, CTAs, or any other purpose.",
+      "Do always render the day badge <span> (the +1 / -1 superscript) even when invisible. Use visibility: hidden not display: none to prevent layout shift.",
+      "Do keep the remove button in layout even when only one region remains. Use visibility: hidden to prevent row-width shift.",
+      "Do apply prefers-reduced-motion suppression with !important on transition-duration and animation-duration."
+    ],
+    "donts": [
+      "Don't render a page-level heading, title, or 'Overlap Finder' text anywhere visible on screen. The app name lives only in <title>.",
+      "Don't add a second bordered card container. The timeline card is the sole card. Controls, headers, and metadata are plain content on the page background.",
+      "Don't nest cards inside the timeline card. No region row should get its own background, border, or elevated container.",
+      "Don't use direction-based color variants (e.g. red for 'starts early', blue for 'ends late'). Direction is conveyed as text only. Severity gets color; direction does not.",
+      "Don't introduce a fourth signal color or use the three signal colors outside the cells and time labels.",
+      "Don't change the row layout column order: grip → label block → track strip → remove button. This sequence is load-bearing for the overlay positioning system."
+    ]
+  }
+}
