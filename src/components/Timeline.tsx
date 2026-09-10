@@ -47,6 +47,8 @@ const DROP_ANIMATION_MS = 200;
 
 /** Day copies rendered side-by-side for infinite scroll. */
 const COPIES = 5;
+/** Viewport always shows 1 full day + this fraction of the next day as a peek. */
+const DAY_PEEK_FACTOR = 1.1;
 /** Index of the "today" copy within COPIES. */
 const CENTER_COPY = 2;
 
@@ -126,17 +128,25 @@ export function Timeline({
   useEffect(() => setLiveSlot(slotUTC), [slotUTC]);
   useEffect(() => setLiveDur(dur), [dur]);
 
-  // ── ResizeObserver on scroll inner div ────────────────────────────────────
+  // ── ResizeObserver: viewport width → singleDayWidth; rows height → trackHeight
+  // Two separate observers: scrollRef for width (DAY_PEEK_FACTOR), scrollInnerRef
+  // for height so the Rnd slot doesn't extend into the Add Region button area.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      const dayW = el.offsetWidth / DAY_PEEK_FACTOR;
+      setSingleDayWidth(dayW);
+      singleDayWidthRef.current = dayW;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   useEffect(() => {
     const el = scrollInnerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
-      const totalW = el.offsetWidth;
-      const dayW = totalW > 0 ? totalW / COPIES : 0;
-      setSingleDayWidth(dayW);
-      singleDayWidthRef.current = dayW;
-      setTrackHeight(el.offsetHeight);
-    });
+    const ro = new ResizeObserver(() => setTrackHeight(el.offsetHeight));
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
