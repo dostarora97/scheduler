@@ -1,0 +1,10 @@
+# Gitleaks configuration
+# https://github.com/gitleaks/gitleaks#configuration
+
+[allowlist]
+  description = "Known safe patterns"
+  regexTarget = "match"
+  regexes = [
+    # Placeholder values used in tests or documentation
+    '''placeholder[-_]key''',
+  ]

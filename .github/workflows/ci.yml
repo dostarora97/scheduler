@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ── Path filtering ─────────────────────────────────────────────────────────
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+      ci: ${{ steps.filter.outputs.ci }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'index.html'
+              - 'package.json'
+              - 'bun.lock'
+              - 'vite.config.*'
+              - 'tsconfig*'
+            ci:
+              - '.github/workflows/**'
+
+  # ── Type-check ─────────────────────────────────────────────────────────────
+  typecheck:
+    needs: [changes]
+    if: needs.changes.outputs.src == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Type-check
+        run: bunx tsc --noEmit
+
+  # ── Lint ───────────────────────────────────────────────────────────────────
+  lint:
+    needs: [changes]
+    if: needs.changes.outputs.src == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Lint (oxlint)
+        run: bun run lint
+
+  # ── Build ──────────────────────────────────────────────────────────────────
+  build:
+    needs: [changes]
+    if: needs.changes.outputs.src == 'true' || needs.changes.outputs.ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Build
+        run: bun run build
+
+  # ── Secret scanning ────────────────────────────────────────────────────────
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Gate ───────────────────────────────────────────────────────────────────
+  all-green:
+    if: always()
+    needs: [changes, typecheck, lint, build, gitleaks]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all jobs passed or were skipped
+        run: |
+          results=(
+            "${{ needs.changes.result }}"
+            "${{ needs.typecheck.result }}"
+            "${{ needs.lint.result }}"
+            "${{ needs.build.result }}"
+            "${{ needs.gitleaks.result }}"
+          )
+          for r in "${results[@]}"; do
+            if [[ "$r" != "success" && "$r" != "skipped" ]]; then
+              echo "::error::Job failed with result: $r"
+              exit 1
+            fi
+          done
+          echo "All checks passed!"
