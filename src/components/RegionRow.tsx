@@ -16,9 +16,9 @@ import {
 import { TrackCells } from "./TrackCells";
 
 const LEVEL_COLOR: Record<PainLevel, string> = {
-  ok: "text-green-400",
-  mild: "text-amber-400",
-  heavy: "text-red-400",
+  ok: "text-signal-ok",
+  mild: "text-signal-mild",
+  heavy: "text-signal-heavy",
 };
 
 const REGION_NAME_MAX_LEN = 40; // cap name length to keep label column stable
@@ -151,7 +151,7 @@ export function RegionRow({
             maxLength={REGION_NAME_MAX_LEN}
             aria-label="Region name"
           />
-          <span className="text-[11px] text-app-muted">{tzLabel}</span>
+          <span className="text-[11px] text-app-fg opacity-50">{tzLabel}</span>
         </div>
 
         {/* Start time — horizontal [time][+N superscript] */}

@@ -47,10 +47,7 @@ function TimeField({
   };
 
   const togglePeriod = () => {
-    emit(
-      isPM ? (h24 === 12 ? 0 : h24 - 12) : h24 === 0 ? 12 : h24 + 12,
-      min,
-    );
+    emit(isPM ? (h24 === 12 ? 0 : h24 - 12) : h24 === 0 ? 12 : h24 + 12, min);
   };
 
   return (
@@ -68,10 +65,10 @@ function TimeField({
         value={String(h12).padStart(2, "0")}
         onChange={onHourChange}
         onFocus={(e) => e.target.select()}
-        className="w-5 bg-transparent text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+        className="w-5 [appearance:textfield] bg-transparent text-center outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
         aria-label="hours"
       />
-      <span className="select-none text-app-muted/40">:</span>
+      <span className="text-app-muted/40 select-none">:</span>
       <input
         name={`${name}-m`}
         type="number"
@@ -80,13 +77,13 @@ function TimeField({
         value={String(min).padStart(2, "0")}
         onChange={onMinuteChange}
         onFocus={(e) => e.target.select()}
-        className="w-5 bg-transparent text-center outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
+        className="w-5 [appearance:textfield] bg-transparent text-center outline-none [&::-webkit-inner-spin-button]:hidden [&::-webkit-outer-spin-button]:hidden"
         aria-label="minutes"
       />
       <button
         type="button"
         onClick={togglePeriod}
-        className="ml-1.5 select-none rounded px-1 py-px text-[10px] text-app-muted transition-colors hover:text-app-fg"
+        className="ml-1.5 rounded px-1 py-px text-[10px] text-app-muted transition-colors select-none hover:text-app-fg"
         aria-label={`Toggle AM/PM, currently ${isPM ? "PM" : "AM"}`}
       >
         {isPM ? "PM" : "AM"}
@@ -135,7 +132,7 @@ export function Controls({
       <div className="flex items-center gap-2">
         <ClockIcon className="size-3.5 shrink-0 text-app-muted" />
         <span
-          className="text-[11px] text-app-muted"
+          className="text-xs text-app-muted"
           title="The shared window used to rate how well each timezone overlaps"
         >
           Work hours
@@ -147,7 +144,7 @@ export function Controls({
           onChange={onWorkStartChange}
           aria-label="Work start time"
         />
-        <span className="text-[11px] text-app-border">–</span>
+        <span className="text-xs text-app-border">–</span>
         <TimeField
           id="work-end"
           name="work-end"
@@ -163,7 +160,7 @@ export function Controls({
       <div className="flex items-center gap-2">
         <CalendarIcon className="size-3.5 shrink-0 text-app-muted" />
         <span
-          className="text-[11px] text-app-muted"
+          className="text-xs text-app-muted"
           title="Sets the meeting date and adjusts UTC offsets for DST-observing timezones"
         >
           Date

@@ -37,6 +37,10 @@
     --color-app-muted: #8b92a0;    /* secondary text, icons */
     --color-app-fg: #e8e6e1;       /* primary foreground text */
     --color-app-elevated: #1e2330; /* elevated surface (drag overlay) */
+    /* Signal color aliases — time labels use the same HDR values as the cells */
+    --color-signal-ok: var(--color-green);
+    --color-signal-mild: var(--color-amber);
+    --color-signal-heavy: var(--color-red);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
