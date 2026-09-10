@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "@fontsource-variable/geist";
+@import "@fontsource-variable/jetbrains-mono";
 
 @custom-variant dark (&:is(.dark *));
 @custom-variant mobile-ls (@media (max-height: 500px) and (orientation: landscape));
@@ -10,25 +10,36 @@
 /* Overlap-finder palette */
 :root {
   --color-green: #4fa98c;
-  --color-green-pastel: color-mix(in srgb, #4fa98c, white 30%);
+  /* pastel: alpha-based so it glows on dark, not milky — revert: color-mix(in srgb, #4fa98c, white 30%) */
+  --color-green-pastel: rgba(79, 169, 140, 0.22);
   --color-amber: #d9a052;
-  --color-amber-pastel: color-mix(in srgb, #d9a052, white 30%);
+  /* pastel: alpha-based — revert: color-mix(in srgb, #d9a052, white 30%) */
+  --color-amber-pastel: rgba(217, 160, 82, 0.22);
   --color-red: #c4573f;
-  --color-red-pastel: color-mix(in srgb, #c4573f, white 30%);
-  /* overlay left offset = grip (1rem) + label column (19rem) */
-  --label-w: 20rem;
+  /* pastel: alpha-based — revert: color-mix(in srgb, #c4573f, white 30%) */
+  --color-red-pastel: rgba(196, 87, 63, 0.22);
+  /* overlay left offset = grip (w-5=1.25rem) + ml-2 gap (0.5rem) + label column (w-82=20.5rem) */
+  --label-w: 22.25rem;
 }
 
 @media (max-height: 500px) and (orientation: landscape) {
   :root {
-    /* compact: grip (1rem) + label column (13rem) */
-    --label-w: 14rem;
+    /* compact: grip (1.25rem) + ml-2 (0.5rem) + label column (w-54=13.5rem) */
+    --label-w: 15.25rem;
   }
 }
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Geist Variable', sans-serif;
+    --font-sans: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
+    --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', monospace;
+    /* App structural palette — dark-only, separate from shadcn token layer */
+    --color-app-bg: #14171c;       /* outermost page background */
+    --color-app-card: #1b1f27;     /* card / surface background */
+    --color-app-border: #2a2f3a;   /* row dividers and card borders */
+    --color-app-muted: #8b92a0;    /* secondary text, icons */
+    --color-app-fg: #e8e6e1;       /* primary foreground text */
+    --color-app-elevated: #1e2330; /* elevated surface (drag overlay) */
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -148,6 +159,14 @@
   html {
     @apply font-sans;
     }
+  /* Theme browser surfaces from the palette so inputs feel native to the world */
+  input, textarea {
+    caret-color: var(--color-app-fg);
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--color-app-fg) 15%, transparent);
+    color: var(--color-app-fg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -156,4 +175,10 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
   }
+}
+
+/* Drag clone fade-in as the row lifts off */
+@keyframes cloneEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }

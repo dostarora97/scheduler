@@ -1,43 +1,81 @@
-import { useRef, useCallback, useEffect, useState } from 'react'
-import { Rnd } from 'react-rnd'
 import {
-  DndContext,
   closestCenter,
-  PointerSensor,
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
   KeyboardSensor,
+  PointerSensor,
   useSensor,
   useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
+} from "@dnd-kit/core";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
-  SortableContext,
-  verticalListSortingStrategy,
   arrayMove,
+  SortableContext,
   sortableKeyboardCoordinates,
-} from '@dnd-kit/sortable'
-import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
-import { PlusIcon } from 'lucide-react'
-import { RegionRow } from './RegionRow'
-import { computeOffsets, timeStrToMin, snapToGrid, fmtUTC, wrapMin, TZ_OPTIONS, type Region } from '@/lib/tz'
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { PlusIcon } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Rnd } from "react-rnd";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  computeOffsets,
+  fmtUTC,
+  type Region,
+  snapToGrid,
+  TZ_OPTIONS,
+  timeStrToMin,
+  wrapMin,
+} from "@/lib/tz";
+import { RegionRow } from "./RegionRow";
 
-const MIN_DUR = 30
+const MIN_DUR = 30; // minimum meeting duration (minutes) = one grid cell
 
-// Fallback label width; the live value comes from the --label-w CSS variable
-const LABEL_W_FALLBACK = '20rem'
-// Must match RegionRow remove button: ml-1 + size-5 ≈ 1.75rem
-const REMOVE_W = '1.75rem'
+// Overlay positioning — kept in sync with RegionRow label column widths and index.css --label-w
+const LABEL_W_FALLBACK = "22.25rem"; // grip (w-5=1.25rem) + ml-2 gap (0.5rem) + label (w-82=20.5rem)
+const REMOVE_W = "2rem"; // remove button allocation (ml-2 + size-6 = 8px + 24px = 32px)
+
+const CELL_MINUTES = 30; // grid resolution: one cell = 30 min
+const FP_EPSILON = 1e-6; // guards resize math at exact cell boundary float imprecision
+const DRAG_ACTIVATION_PX = 5; // pointer must move this far before a drag starts
+const DROP_ANIMATION_MS = 200; // overlay drop animation duration
+
+// Slot selection window visual style — elevation via CSS class so clip-path hover works
+const SLOT_STYLE = {
+  background: "rgba(232,230,225,0.10)",
+  border: "2px solid rgba(232,230,225,0.95)",
+  borderRadius: "5px",
+  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 4px 20px rgba(0,0,0,0.55)",
+} as const;
+
+// Drag overlay clone style (elevated, slightly scaled up)
+const DRAG_CLONE_STYLE = {
+  boxShadow: "0 16px 48px rgba(0,0,0,0.65), 0 0 0 1px rgba(232,230,225,0.08)",
+  borderRadius: "6px",
+  background: "var(--color-app-elevated)",
+  transform: "scale(1.015)",
+} as const;
+
+// Hoist static DnD modifier array — prevents new array reference on every render (rule: hoist static JSX)
+const DRAG_MODIFIERS = [restrictToVerticalAxis];
 
 interface TimelineProps {
-  regions: Region[]
-  slotUTC: number
-  dur: number
-  dateBasis: string
-  workStart: string
-  workEnd: string
-  onRegionsChange: (regions: Region[]) => void
-  onSlotChange: (slot: number) => void
-  onDurChange: (dur: number) => void
-  onLiveChange?: (slot: number, dur: number) => void
+  regions: Region[];
+  slotUTC: number;
+  dur: number;
+  dateBasis: string;
+  workStart: string;
+  workEnd: string;
+  onRegionsChange: (regions: Region[]) => void;
+  onSlotChange: (slot: number) => void;
+  onDurChange: (dur: number) => void;
+  onLiveChange?: (slot: number, dur: number) => void;
 }
 
 export function Timeline({
@@ -52,107 +90,144 @@ export function Timeline({
   onDurChange,
   onLiveChange,
 }: TimelineProps) {
-  const overlayRef = useRef<HTMLDivElement>(null)
-  const [trackWidth, setTrackWidth] = useState(0)
-  const [trackHeight, setTrackHeight] = useState(0)
-  const [labelW, setLabelW] = useState(LABEL_W_FALLBACK)
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const [trackWidth, setTrackWidth] = useState(0);
+  const [trackHeight, setTrackHeight] = useState(0);
+  const [labelW, setLabelW] = useState(LABEL_W_FALLBACK);
 
   // Live values: update every drag/resize frame so rows and cells respond instantly
-  const [liveSlot, setLiveSlot] = useState(slotUTC)
-  const [liveDur, setLiveDur] = useState(dur)
+  const [liveSlot, setLiveSlot] = useState(slotUTC);
+  const [liveDur, setLiveDur] = useState(dur);
 
   // Sync when slot/dur change from outside (cell click, URL paste, keyboard)
-  useEffect(() => setLiveSlot(slotUTC), [slotUTC])
-  useEffect(() => setLiveDur(dur), [dur])
+  useEffect(() => setLiveSlot(slotUTC), [slotUTC]);
+  useEffect(() => setLiveDur(dur), [dur]);
 
   // Read --label-w CSS variable so the overlay tracks the responsive label column width
   useEffect(() => {
     const updateLabelW = () => {
-      const v = getComputedStyle(document.documentElement).getPropertyValue('--label-w').trim()
-      setLabelW(v || LABEL_W_FALLBACK)
-    }
-    updateLabelW()
-    window.addEventListener('resize', updateLabelW)
-    window.addEventListener('orientationchange', updateLabelW)
+      const v = getComputedStyle(document.documentElement)
+        .getPropertyValue("--label-w")
+        .trim();
+      setLabelW(v || LABEL_W_FALLBACK);
+    };
+    updateLabelW();
+    window.addEventListener("resize", updateLabelW);
+    window.addEventListener("orientationchange", updateLabelW);
     return () => {
-      window.removeEventListener('resize', updateLabelW)
-      window.removeEventListener('orientationchange', updateLabelW)
-    }
-  }, [])
+      window.removeEventListener("resize", updateLabelW);
+      window.removeEventListener("orientationchange", updateLabelW);
+    };
+  }, []);
 
   // Always-mounted ResizeObserver so dimensions are ready immediately
   useEffect(() => {
-    const el = overlayRef.current
-    if (!el) return
+    const el = overlayRef.current;
+    if (!el) return;
     const ro = new ResizeObserver(() => {
-      setTrackWidth(el.offsetWidth)
-      setTrackHeight(el.offsetHeight)
-    })
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
+      setTrackWidth(el.offsetWidth);
+      setTrackHeight(el.offsetHeight);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-  const pxPerMin = trackWidth > 0 ? trackWidth / 1440 : 0
-  const cellPx = trackWidth > 0 ? trackWidth / 48 : 0
-  const winX = slotUTC * pxPerMin
-  const winW = Math.max(cellPx, dur * pxPerMin)
+  const pxPerMin = trackWidth > 0 ? trackWidth / 1440 : 0;
+  const cellPx = trackWidth > 0 ? trackWidth / 48 : 0;
+  const winX = slotUTC * pxPerMin;
+  const winW = Math.max(cellPx, dur * pxPerMin);
 
-  // Use live values for cell highlighting and time labels
-  const selectedStartCol = Math.floor(liveSlot / 30)
-  const selectedEndCol = Math.ceil((liveSlot + liveDur) / 30)
+  // Use live values for cell highlighting. Math.round instead of floor/ceil so that
+  // sub-integer FP error in liveSlot/liveDur (which are multiples of 30) never adds
+  // a phantom extra cell at the boundaries.
+  const selectedStartCol = Math.round(liveSlot / 30);
+  const selectedEndCol = Math.round((liveSlot + liveDur) / 30);
 
-  const withOffsets = computeOffsets(regions, dateBasis)
-  const workStartMin = timeStrToMin(workStart)
-  const workEndMin = timeStrToMin(workEnd)
+  const withOffsets = useMemo(
+    () => computeOffsets(regions, dateBasis),
+    [regions, dateBasis],
+  );
+  // Memoize workStart/End minutes — timeStrToMin runs every drag frame without this (rule: narrow effect deps)
+  const workStartMin = useMemo(() => timeStrToMin(workStart), [workStart]);
+  const workEndMin = useMemo(() => timeStrToMin(workEnd), [workEnd]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  )
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: DRAG_ACTIVATION_PX },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  // Disable row pointer-events while the slot window is being dragged or resized
+  // — prevents the hover:bg-white/[0.03] tint from flickering as the resize handle moves over rows
+  const [slotInteracting, setSlotInteracting] = useState(false);
+  const activeRegion = activeId
+    ? (withOffsets.find((r) => r.id === activeId) ?? null)
+    : null;
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
+  }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIdx = regions.findIndex(r => r.id === active.id)
-    const newIdx = regions.findIndex(r => r.id === over.id)
-    onRegionsChange(arrayMove(regions, oldIdx, newIdx))
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = regions.findIndex((r) => r.id === active.id);
+    const newIdx = regions.findIndex((r) => r.id === over.id);
+    onRegionsChange(arrayMove(regions, oldIdx, newIdx));
   }
 
   const handleCellClick = useCallback(
     (col: number) => {
-      onSlotChange(snapToGrid(col * 30, dur))
+      onSlotChange(snapToGrid(col * 30, dur));
     },
     [dur, onSlotChange],
-  )
+  );
 
   const handleSlotKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        onSlotChange(snapToGrid(Math.max(0, slotUTC - 30), dur))
-      } else if (e.key === 'ArrowRight') {
-        e.preventDefault()
-        onSlotChange(snapToGrid(Math.min(1440 - dur, slotUTC + 30), dur))
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        onSlotChange(snapToGrid(Math.max(0, slotUTC - CELL_MINUTES), dur));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        onSlotChange(
+          snapToGrid(Math.min(1440 - dur, slotUTC + CELL_MINUTES), dur),
+        );
       }
     },
     [slotUTC, dur, onSlotChange],
-  )
+  );
 
-  const usedTz = new Set(regions.map(r => r.tz))
-  const addOptions = TZ_OPTIONS.filter(([v]) => !usedTz.has(v))
+  // Memoize addOptions — builds a Set + filters 16 items on every drag frame without this (rule: memoize non-trivial render-path work)
+  const addOptions = useMemo(() => {
+    const usedTz = new Set(regions.map((r) => r.tz));
+    return TZ_OPTIONS.filter(([v]) => !usedTz.has(v));
+  }, [regions]);
+  const [addRegionOpen, setAddRegionOpen] = useState(false);
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      modifiers={[restrictToVerticalAxis]}
+      modifiers={DRAG_MODIFIERS}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
+      onDragCancel={() => setActiveId(null)}
     >
-      <SortableContext items={regions.map(r => r.id)} strategy={verticalListSortingStrategy}>
+      <SortableContext
+        items={regions.map((r) => r.id)}
+        strategy={verticalListSortingStrategy}
+      >
         {/* Rows wrapper — position:relative so the overlay can be absolutely positioned */}
         <div className="relative">
-          <div>
-            {withOffsets.map(r => (
+          {/* pointer-events-none while slot is dragged/resized — prevents row hover tint from flickering */}
+          <div className={slotInteracting ? "pointer-events-none" : ""}>
+            {withOffsets.map((r) => (
               <RegionRow
                 key={r.id}
                 region={r}
@@ -165,10 +240,14 @@ export function Timeline({
                 selectedStartCol={selectedStartCol}
                 selectedEndCol={selectedEndCol}
                 canRemove={regions.length > 1}
-                onNameChange={name =>
-                  onRegionsChange(regions.map(x => (x.id === r.id ? { ...x, name } : x)))
+                onNameChange={(name) =>
+                  onRegionsChange(
+                    regions.map((x) => (x.id === r.id ? { ...x, name } : x)),
+                  )
                 }
-                onRemove={() => onRegionsChange(regions.filter(x => x.id !== r.id))}
+                onRemove={() =>
+                  onRegionsChange(regions.filter((x) => x.id !== r.id))
+                }
                 onCellClick={handleCellClick}
               />
             ))}
@@ -183,17 +262,13 @@ export function Timeline({
           >
             {trackWidth > 0 && (
               <Rnd
-                key={`${slotUTC}-${dur}`}
+                key={`${slotUTC}-${dur}-${trackHeight}`}
                 className="pointer-events-auto"
-                style={{
-                  background: 'rgba(232,230,225,0.06)',
-                  border: '2px solid rgba(232,230,225,0.82)',
-                  borderRadius: '5px',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.5)',
-                }}
+                style={SLOT_STYLE}
                 bounds="parent"
                 dragAxis="x"
                 dragGrid={[cellPx, 0]}
+                resizeGrid={[cellPx || 1, 1]}
                 default={{ x: winX, y: 0, width: winW, height: trackHeight }}
                 minWidth={cellPx}
                 enableResizing={{
@@ -207,31 +282,54 @@ export function Timeline({
                   bottomRight: false,
                 }}
                 resizeHandleStyles={{
-                  left: { width: '14px', left: '-7px', cursor: 'ew-resize' },
-                  right: { width: '14px', right: '-7px', cursor: 'ew-resize' },
+                  left: { width: "14px", left: "-7px", cursor: "ew-resize" },
+                  right: { width: "14px", right: "-7px", cursor: "ew-resize" },
                 }}
                 onDrag={(_e, d) => {
-                  if (pxPerMin <= 0) return
-                  const s = snapToGrid(d.x / pxPerMin, liveDur)
-                  setLiveSlot(s)
-                  onLiveChange?.(s, liveDur)
+                  setSlotInteracting(true);
+                  if (pxPerMin <= 0) return;
+                  const s = snapToGrid(d.x / pxPerMin, liveDur);
+                  setLiveSlot(s);
+                  onLiveChange?.(s, liveDur);
                 }}
                 onDragStop={(_e, d) => {
-                  onSlotChange(snapToGrid(d.x / pxPerMin, dur))
+                  setSlotInteracting(false);
+                  onSlotChange(snapToGrid(d.x / pxPerMin, dur));
                 }}
-                onResize={(_e, _dir, ref, _delta, pos) => {
-                  if (pxPerMin <= 0) return
-                  const s = snapToGrid(pos.x / pxPerMin, MIN_DUR)
-                  const d = Math.max(MIN_DUR, Math.round(ref.offsetWidth / pxPerMin / 30) * 30)
-                  setLiveSlot(s)
-                  setLiveDur(d)
-                  onLiveChange?.(s, d)
+                onResize={(_e, dir, ref, _delta, pos) => {
+                  setSlotInteracting(true);
+                  if (pxPerMin <= 0 || cellPx <= 0) return;
+                  // Compute in cellPx space to avoid pxPerMin FP conversion errors.
+                  // Tiny epsilon (1e-6) corrects for exact-boundary float imprecision:
+                  //   floor(12.0000001 + 1e-6) = 12   (not 13)
+                  //   ceil(6.0000001 - 1e-6)   = 6    (not 7)
+                  const slotCell =
+                    dir === "left"
+                      ? Math.floor(pos.x / cellPx + FP_EPSILON)
+                      : Math.round(pos.x / cellPx);
+                  const durCells = Math.ceil(
+                    ref.offsetWidth / cellPx - FP_EPSILON,
+                  );
+                  const s = Math.max(0, slotCell * CELL_MINUTES);
+                  const d = Math.max(MIN_DUR, durCells * CELL_MINUTES);
+                  setLiveSlot(s);
+                  setLiveDur(d);
+                  onLiveChange?.(s, d);
                 }}
-                onResizeStop={(_e, _dir, ref, _delta, pos) => {
-                  const newSlot = snapToGrid(pos.x / pxPerMin, MIN_DUR)
-                  const newDur = Math.max(MIN_DUR, Math.round(ref.offsetWidth / pxPerMin / 30) * 30)
-                  onSlotChange(newSlot)
-                  onDurChange(newDur)
+                onResizeStop={(_e, dir, ref, _delta, pos) => {
+                  setSlotInteracting(false);
+                  if (cellPx <= 0) return;
+                  const slotCell =
+                    dir === "left"
+                      ? Math.floor(pos.x / cellPx + FP_EPSILON)
+                      : Math.round(pos.x / cellPx);
+                  const durCells = Math.ceil(
+                    ref.offsetWidth / cellPx - FP_EPSILON,
+                  );
+                  const newSlot = Math.max(0, slotCell * CELL_MINUTES);
+                  const newDur = Math.max(MIN_DUR, durCells * CELL_MINUTES);
+                  onSlotChange(newSlot);
+                  onDurChange(newDur);
                 }}
               >
                 <div
@@ -242,42 +340,140 @@ export function Timeline({
                   aria-valuemax={1410}
                   aria-valuenow={slotUTC}
                   onKeyDown={handleSlotKeyDown}
-                  className="absolute inset-0 rounded-[3px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                  className="absolute inset-0 cursor-grab rounded-[3px] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 active:cursor-grabbing"
+                  style={{ pointerEvents: "none" }}
                 />
               </Rnd>
             )}
           </div>
         </div>
 
-        {/* Add region row — outside the position:relative wrapper so Rnd doesn't cover it */}
-        {regions.length < 6 && addOptions.length > 0 && (
-          <div className="relative mt-1">
-            <div className="flex cursor-pointer items-center justify-center rounded-md border border-dashed border-[#2a2f3a] py-1.5 text-[#8b92a0] transition-colors hover:border-[#8b92a0] hover:bg-white/5 hover:text-[#e8e6e1]">
-              <PlusIcon className="size-4" />
-              <span className="ml-1 text-xs">Add region</span>
-            </div>
-            <select
-              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-              aria-label="Add region"
-              value=""
-              onChange={e => {
-                const found = TZ_OPTIONS.find(([v]) => v === e.target.value)
-                if (!found) return
-                const [tz, label] = found
-                onRegionsChange([
-                  ...regions,
-                  { id: String(Date.now()), name: label.split(' / ')[0], tz },
-                ])
-              }}
+        {/* Add region — custom popover dropdown, no native <select> */}
+        {addOptions.length > 0 && (
+          <Popover open={addRegionOpen} onOpenChange={setAddRegionOpen}>
+            <PopoverTrigger
+              render={
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Add region"
+                  className="mt-1 flex cursor-pointer items-center justify-center rounded-md border border-dashed border-app-border py-1.5 text-app-muted transition-colors hover:border-app-muted/60 hover:bg-white/5 hover:text-app-fg"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      setAddRegionOpen(true);
+                  }}
+                >
+                  <PlusIcon className="size-4" />
+                  <span className="ml-1 text-xs">Add region</span>
+                </div>
+              }
+            />
+            <PopoverContent
+              align="start"
+              side="bottom"
+              sideOffset={4}
+              className="w-56 overflow-hidden border border-app-border/70 bg-app-card p-1 shadow-[0_8px_32px_rgba(0,0,0,0.6)]"
             >
-              <option value="" disabled>Add region</option>
-              {addOptions.map(([v, l]) => (
-                <option key={v} value={v}>{l}</option>
-              ))}
-            </select>
-          </div>
+              <div className="max-h-64 overflow-y-auto">
+                {[
+                  {
+                    label: "Americas",
+                    tzs: [
+                      "America/Los_Angeles",
+                      "America/New_York",
+                      "America/Chicago",
+                      "America/Denver",
+                      "America/Sao_Paulo",
+                    ],
+                  },
+                  {
+                    label: "Europe",
+                    tzs: [
+                      "Europe/Berlin",
+                      "Europe/London",
+                      "Europe/Paris",
+                    ],
+                  },
+                  {
+                    label: "Asia & Pacific",
+                    tzs: [
+                      "Asia/Kolkata",
+                      "Asia/Dubai",
+                      "Asia/Singapore",
+                      "Asia/Shanghai",
+                      "Asia/Tokyo",
+                      "Australia/Sydney",
+                      "Pacific/Auckland",
+                    ],
+                  },
+                  { label: "UTC", tzs: ["UTC"] },
+                ].map(({ label, tzs }) => {
+                  const groupOptions = addOptions.filter(([v]) =>
+                    tzs.includes(v),
+                  );
+                  if (groupOptions.length === 0) return null;
+                  return (
+                    <div key={label}>
+                      <p className="px-2 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-widest text-app-muted/60 first:pt-1">
+                        {label}
+                      </p>
+                      {groupOptions.map(([v, l]) => (
+                        <button
+                          key={v}
+                          type="button"
+                          className="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 text-left font-mono text-xs text-app-fg transition-colors hover:bg-white/[0.06]"
+                          onClick={() => {
+                            onRegionsChange([
+                              ...regions,
+                              {
+                                id: String(Date.now()),
+                                name: l.split(" / ")[0],
+                                tz: v,
+                              },
+                            ]);
+                            setAddRegionOpen(false);
+                          }}
+                        >
+                          {l}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
       </SortableContext>
+
+      {/* Floating clone that follows the cursor during row-reorder drag */}
+      <DragOverlay
+        dropAnimation={{
+          duration: DROP_ANIMATION_MS,
+          easing: "cubic-bezier(0.2, 0, 0, 1)",
+        }}
+      >
+        {activeRegion && (
+          <div style={DRAG_CLONE_STYLE} className="animate-[cloneEnter_150ms_ease-out]">
+            <RegionRow
+              region={activeRegion}
+              offset={activeRegion.offset}
+              workStart={workStartMin}
+              workEnd={workEndMin}
+              slotUTC={liveSlot}
+              dur={liveDur}
+              dateBasis={dateBasis}
+              selectedStartCol={selectedStartCol}
+              selectedEndCol={selectedEndCol}
+              canRemove={false}
+              dragOverlay
+              onNameChange={() => {}}
+              onRemove={() => {}}
+              onCellClick={() => {}}
+            />
+          </div>
+        )}
+      </DragOverlay>
     </DndContext>
-  )
+  );
 }
